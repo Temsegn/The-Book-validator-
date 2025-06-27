@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/orthodox", {
+  .connect(process.env.MONGODB_URI || "mongodb+srv://tom:1234tom2394@wisdomwalk.db2qsqm.mongodb.net/orthodx?retryWrites=true&w=majority&appName=wisdomwalk", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
