@@ -48,63 +48,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       ),
       body: Column(
         children: [
-          // Filter Tabs
-          Container(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildFilterChip('All', 'all'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterChip('Pending', 'pending'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterChip('Reviewed', 'reviewed'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterChip('Resolved', 'resolved'),
-                ),
-              ],
-            ),
-          ),
-          
-          // Reports List
+          _buildFilterChips(),
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
                 : _filteredReports.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.report_off,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No reports found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
+                    ? _buildEmptyState()
                     : RefreshIndicator(
                         onRefresh: _loadReports,
                         child: ListView.builder(
                           itemCount: _filteredReports.length,
-                          itemBuilder: (context, index) {
-                            final report = _filteredReports[index];
-                            return _buildReportCard(report);
-                          },
+                          itemBuilder: (context, index) =>
+                              _buildReportCard(_filteredReports[index]),
                         ),
                       ),
           ),
@@ -113,29 +68,65 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     );
   }
 
+  Widget _buildFilterChips() {
+    final filters = {
+      'All': 'all',
+      'Pending': 'pending',
+      'Reviewed': 'reviewed',
+      'Resolved': 'resolved',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: filters.entries.map((entry) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildFilterChip(entry.key, entry.value),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedFilter == value;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = value;
-        });
-      },
+      onTap: () => setState(() => _selectedFilter = value),
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        padding: EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.red.shade800 : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade700,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 12,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey.shade700,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.report_off, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No reports found',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
@@ -170,10 +161,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             color: report.type == 'book' ? Colors.blue.shade800 : Colors.orange.shade800,
           ),
         ),
-        title: Text(
-          report.title,
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(report.title, style: TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -199,10 +187,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 SizedBox(width: 8),
                 Text(
                   '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -210,85 +195,16 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ),
         children: [
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Description:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
                 Text(report.description),
                 SizedBox(height: 16),
-                
-                // Screenshot
-                if (report.screenshotUrl.isNotEmpty) ...[
-                  Text(
-                    'Screenshot:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        report.screenshotUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.image_not_supported, color: Colors.grey),
-                                  Text('Screenshot not available', style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                ],
-                
-                // Action Buttons
-                Row(
-                  children: [
-                    if (report.status == 'pending') ...[
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _updateReportStatus(report.id, 'reviewed'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                          ),
-                          child: Text('Mark as Reviewed', style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                    ],
-                    if (report.status != 'resolved') ...[
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _updateReportStatus(report.id, 'resolved'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                          child: Text('Mark as Resolved', style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                if (report.screenshotUrl.isNotEmpty) _buildScreenshot(report.screenshotUrl),
+                _buildActionButtons(report),
               ],
             ),
           ),
@@ -297,23 +213,89 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     );
   }
 
+  Widget _buildScreenshot(String url) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Screenshot:', style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey.shade200,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.image_not_supported, color: Colors.grey),
+                        Text('Screenshot not available', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(Report report) {
+    return Row(
+      children: [
+        if (report.status == 'pending') ...[
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateReportStatus(report.id, 'reviewed'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              child: Text('Mark as Reviewed', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+          SizedBox(width: 8),
+        ],
+        if (report.status != 'resolved') ...[
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateReportStatus(report.id, 'resolved'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: Text('Mark as Resolved', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _updateReportStatus(String reportId, String status) async {
     try {
-      // You would implement this endpoint in your backend
-      // await ApiService.updateReportStatus(reportId, status);
-      
+      // await ApiService.updateReportStatus(reportId, status); // Backend call
+
       setState(() {
         final index = _reports.indexWhere((r) => r.id == reportId);
         if (index != -1) {
+          final oldReport = _reports[index];
           _reports[index] = Report(
-            id: _reports[index].id,
-            type: _reports[index].type,
-            title: _reports[index].title,
-            description: _reports[index].description,
-            screenshotUrl: _reports[index].screenshotUrl,
-            reporterId: _reports[index].reporterId,
-            reporterName: _reports[index].reporterName,
-            createdAt: _reports[index].createdAt,
+            id: oldReport.id,
+            type: oldReport.type,
+            title: oldReport.title,
+            description: oldReport.description,
+            screenshotUrl: oldReport.screenshotUrl,
+            reporterId: oldReport.reporterId,
+            reporterName: oldReport.reporterName,
+            createdAt: oldReport.createdAt,
             status: status,
           );
         }

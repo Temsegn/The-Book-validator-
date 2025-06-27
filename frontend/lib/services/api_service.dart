@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/book.dart';
 import '../models/song.dart';
@@ -8,417 +8,254 @@ import '../models/report.dart';
 import '../models/notification.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://orthodox-t1mw.onrender.com/api';
   static String? _token;
 
   static void setToken(String token) {
     _token = token;
-    html.window.localStorage['auth_token'] = token;
-  }
-
-  static String? getToken() {
-    if (_token != null) return _token;
-    _token = html.window.localStorage['auth_token'];
-    return _token;
-  }
-
-  static void clearToken() {
-    _token = null;
-    html.window.localStorage.remove('auth_token');
   }
 
   static Map<String, String> get _headers {
     Map<String, String> headers = {
       'Content-Type': 'application/json',
     };
-    final token = getToken();
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
+    if (_token != null) {
+      headers['Authorization'] = 'Bearer $_token';
     }
     return headers;
   }
 
   // Auth endpoints
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: _headers,
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['token'] != null) {
-          setToken(data['token']);
-        }
-        return data;
-      } else {
-        final errorData = jsonDecode(response.body);
-        return {'success': false, 'message': errorData['message'] ?? 'Login failed'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: _headers,
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    return jsonDecode(response.body);
   }
 
   static Future<Map<String, dynamic>> register(String name, String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: _headers,
-        body: jsonEncode({'name': name, 'email': email, 'password': password}),
-      );
-      
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        if (data['token'] != null) {
-          setToken(data['token']);
-        }
-        return data;
-      } else {
-        final errorData = jsonDecode(response.body);
-        return {'success': false, 'message': errorData['message'] ?? 'Registration failed'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  static Future<User?> getCurrentUser() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/profile'),
-        headers: _headers,
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return User.fromJson(data['user']);
-      }
-      return null;
-    } catch (e) {
-      print('Error getting current user: $e');
-      return null;
-    }
-  }
-
-  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/profile'),
-        headers: _headers,
-        body: jsonEncode(profileData),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  static Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/change-password'),
-        headers: _headers,
-        body: jsonEncode({
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        }),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register'),
+      headers: _headers,
+      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+    );
+    return jsonDecode(response.body);
   }
 
   // Book endpoints
-  static Future<List<Book>> getBooks({String? search, String? category, String? status}) async {
-    try {
-      String url = '$baseUrl/books';
-      List<String> queryParams = [];
-      
-      if (search != null && search.isNotEmpty) {
-        queryParams.add('search=${Uri.encodeComponent(search)}');
-      }
-      if (category != null && category.isNotEmpty) {
-        queryParams.add('category=${Uri.encodeComponent(category)}');
-      }
-      if (status != null && status.isNotEmpty) {
-        queryParams.add('status=${Uri.encodeComponent(status)}');
-      }
-      
-      if (queryParams.isNotEmpty) {
-        url += '?${queryParams.join('&')}';
-      }
-      
-      final response = await http.get(Uri.parse(url), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> booksData = data['books'] ?? data;
-        return booksData.map((book) => Book.fromJson(book)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading books: $e');
-      return [];
+  static Future<List<Book>> getBooks({String? search}) async {
+    String url = '$baseUrl/books';
+    if (search != null && search.isNotEmpty) {
+      url += '?search=$search';
     }
+    final response = await http.get(Uri.parse(url), headers: _headers);
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((book) => Book.fromJson(book)).toList();
+    }
+    throw Exception('Failed to load books');
   }
 
-  static Future<Book?> getBook(String id) async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/books/$id'), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return Book.fromJson(data['book'] ?? data);
-      }
-      return null;
-    } catch (e) {
-      print('Error loading book: $e');
-      return null;
+  static Future<Book> getBook(String id) async {
+    final response = await http.get(Uri.parse('$baseUrl/books/$id'), headers: _headers);
+    if (response.statusCode == 200) {
+      return Book.fromJson(jsonDecode(response.body));
     }
+    throw Exception('Failed to load book');
+  }
+
+  static Future<Map<String, dynamic>> addReview(String bookId, Review review) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/books/$bookId/reviews'),
+      headers: _headers,
+      body: jsonEncode(review.toJson()),
+    );
+    return jsonDecode(response.body);
   }
 
   static Future<Map<String, dynamic>> submitBook(Book book) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/books/submit'),
-        headers: _headers,
-        body: jsonEncode(book.toJson()),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  static Future<Map<String, dynamic>> addBookReview(String bookId, Review review) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/books/$bookId/reviews'),
-        headers: _headers,
-        body: jsonEncode(review.toJson()),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/books/submit'),
+      headers: _headers,
+      body: jsonEncode(book.toJson()),
+    );
+    return jsonDecode(response.body);
   }
 
   // Song endpoints
-  static Future<List<Song>> getSongs({String? search, String? category, String? status}) async {
-    try {
-      String url = '$baseUrl/songs';
-      List<String> queryParams = [];
-      
-      if (search != null && search.isNotEmpty) {
-        queryParams.add('search=${Uri.encodeComponent(search)}');
-      }
-      if (category != null && category.isNotEmpty) {
-        queryParams.add('category=${Uri.encodeComponent(category)}');
-      }
-      if (status != null && status.isNotEmpty) {
-        queryParams.add('status=${Uri.encodeComponent(status)}');
-      }
-      
-      if (queryParams.isNotEmpty) {
-        url += '?${queryParams.join('&')}';
-      }
-      
-      final response = await http.get(Uri.parse(url), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> songsData = data['songs'] ?? data;
-        return songsData.map((song) => Song.fromJson(song)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading songs: $e');
-      return [];
+  static Future<List<Song>> getSongs({String? search}) async {
+    String url = '$baseUrl/songs';
+    if (search != null && search.isNotEmpty) {
+      url += '?search=$search';
     }
+    final response = await http.get(Uri.parse(url), headers: _headers);
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((song) => Song.fromJson(song)).toList();
+    }
+    throw Exception('Failed to load songs');
   }
 
-  static Future<Song?> getSong(String id) async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/songs/$id'), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return Song.fromJson(data['song'] ?? data);
-      }
-      return null;
-    } catch (e) {
-      print('Error loading song: $e');
-      return null;
+  static Future<Song> getSong(String id) async {
+    final response = await http.get(Uri.parse('$baseUrl/songs/$id'), headers: _headers);
+    if (response.statusCode == 200) {
+      return Song.fromJson(jsonDecode(response.body));
     }
+    throw Exception('Failed to load song');
   }
 
   static Future<Map<String, dynamic>> submitSong(Song song) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/songs/submit'),
-        headers: _headers,
-        body: jsonEncode(song.toJson()),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  // Favorites endpoints
-  static Future<Map<String, dynamic>> toggleBookFavorite(String bookId) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/user/favorites/books/$bookId'),
-        headers: _headers,
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  static Future<Map<String, dynamic>> toggleSongFavorite(String songId) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/user/favorites/songs/$songId'),
-        headers: _headers,
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  static Future<List<Book>> getFavoriteBooks() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/favorites/books'),
-        headers: _headers,
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> booksData = data['favoriteBooks'] ?? data;
-        return booksData.map((book) => Book.fromJson(book)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading favorite books: $e');
-      return [];
-    }
-  }
-
-  static Future<List<Song>> getFavoriteSongs() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/favorites/songs'),
-        headers: _headers,
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> songsData = data['favoriteSongs'] ?? data;
-        return songsData.map((song) => Song.fromJson(song)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading favorite songs: $e');
-      return [];
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/songs/submit'),
+      headers: _headers,
+      body: jsonEncode(song.toJson()),
+    );
+    return jsonDecode(response.body);
   }
 
   // Report endpoints
   static Future<Map<String, dynamic>> submitReport(Report report) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/reports'),
-        headers: _headers,
-        body: jsonEncode(report.toJson()),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+    final response = await http.post(
+      Uri.parse('$baseUrl/reports'),
+      headers: _headers,
+      body: jsonEncode(report.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<List<Report>> getReports() async {
+    final response = await http.get(Uri.parse('$baseUrl/reports'), headers: _headers);
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((report) => Report.fromJson(report)).toList();
     }
+    throw Exception('Failed to load reports');
   }
 
   // Notification endpoints
   static Future<List<AppNotification>> getNotifications() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/notifications'), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> notificationsData = data['notifications'] ?? data;
-        return notificationsData.map((notification) => AppNotification.fromJson(notification)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading notifications: $e');
-      return [];
+    final response = await http.get(Uri.parse('$baseUrl/notifications'), headers: _headers);
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((notification) => AppNotification.fromJson(notification)).toList();
     }
+    throw Exception('Failed to load notifications');
   }
 
   static Future<Map<String, dynamic>> markNotificationAsRead(String id) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/notifications/$id/read'),
-        headers: _headers,
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+    final response = await http.put(
+      Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: _headers,
+    );
+    return jsonDecode(response.body);
   }
 
   // Admin endpoints
+  static Future<Map<String, dynamic>> addBook(Book book) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin/books'),
+      headers: _headers,
+      body: jsonEncode(book.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> addSong(Song song) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin/songs'),
+      headers: _headers,
+      body: jsonEncode(song.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> sendNotification(String title, String message, String? userId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin/notifications'),
+      headers: _headers,
+      body: jsonEncode({
+        'title': title,
+        'message': message,
+        'userId': userId,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
   static Future<List<User>> getUsers() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/admin/users'), headers: _headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> usersData = data['users'] ?? data;
-        return usersData.map((user) => User.fromJson(user)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error loading users: $e');
-      return [];
+    final response = await http.get(Uri.parse('$baseUrl/admin/users'), headers: _headers);
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((user) => User.fromJson(user)).toList();
     }
+    throw Exception('Failed to load users');
   }
+  // Get all pending submissions
+static Future<Map<String, List<dynamic>>> getPendingSubmissions() async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/admin/pending'),
+    headers: _headers,
+  );
 
-  static Future<Map<String, dynamic>> approveContent(String contentType, String contentId) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/admin/$contentType/$contentId/approve'),
-        headers: _headers,
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return {
+      'books': (data['books'] as List).map((b) => Book.fromJson(b)).toList(),
+      'songs': (data['songs'] as List).map((s) => Song.fromJson(s)).toList(),
+    };
+  } else {
+    throw Exception('Failed to load pending submissions');
   }
+}
 
-  static Future<Map<String, dynamic>> rejectContent(String contentType, String contentId, String reason) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/admin/$contentType/$contentId/reject'),
-        headers: _headers,
-        body: jsonEncode({'reason': reason}),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
+// Approve a book
+static Future<void> approveBook(String id) async {
+  final response = await http.put(
+    Uri.parse('$baseUrl/admin/books/$id/approve'),
+    headers: _headers,
+  );
 
-  static Future<Map<String, dynamic>> getAnalytics() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/admin/analytics'), headers: _headers);
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      return {};
-    } catch (e) {
-      print('Error loading analytics: $e');
-      return {};
-    }
+  if (response.statusCode != 200) {
+    throw Exception('Failed to approve book');
   }
+}
+
+// Reject a book
+static Future<void> rejectBook(String id) async {
+  final response = await http.put(
+    Uri.parse('$baseUrl/admin/books/$id/reject'),
+    headers: _headers,
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to reject book');
+  }
+}
+
+// Approve a song
+static Future<void> approveSong(String id) async {
+  final response = await http.put(
+    Uri.parse('$baseUrl/admin/songs/$id/approve'),
+    headers: _headers,
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to approve song');
+  }
+}
+
+// Reject a song
+static Future<void> rejectSong(String id) async {
+  final response = await http.put(
+    Uri.parse('$baseUrl/admin/songs/$id/reject'),
+    headers: _headers,
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to reject song');
+  }
+}
+
 }

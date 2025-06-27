@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/user_provider.dart';
 import '../../utils/app_theme.dart';
-import '../../widgets/profile_header.dart';
-import '../../widgets/profile_stats.dart';
-import '../../widgets/profile_settings.dart';
-import '../../widgets/profile_favorites.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -15,18 +10,18 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
-  late TabController _tabController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     _animationController = AnimationController(
       duration: Duration(milliseconds: 800),
       vsync: this,
     );
+    
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -35,82 +30,161 @@ class _ProfileScreenState extends State<ProfileScreen>
       curve: Curves.easeInOut,
     ));
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      userProvider.loadFavoriteBooks();
-      userProvider.loadFavoriteSongs();
-      _animationController.forward();
-    });
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0.0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutBack,
+    ));
+
+    _animationController.forward();
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      extendBodyBehindAppBar: true,
       body: FadeTransition(
         opacity: _fadeAnimation,
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              SliverAppBar(
-                expandedHeight: 300,
-                floating: false,
-                pinned: true,
-                backgroundColor: AppTheme.darkBlue,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: ProfileHeader(user: authProvider.user),
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
+                  height: 300,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.darkBlue,
+                        AppTheme.lightBlue,
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(height: 60),
+                        Hero(
+                          tag: 'profile_avatar',
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: AppTheme.primaryGold,
+                            child: Text(
+                              authProvider.user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                              style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkBlue,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          authProvider.user?.name ?? 'User',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          authProvider.user?.email ?? '',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                        if (authProvider.isAdmin) ...[
+                          SizedBox(height: 12),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryGold,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'ADMINISTRATOR',
+                              style: TextStyle(
+                                color: AppTheme.darkBlue,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-                bottom: TabBar(
-                  controller: _tabController,
-                  indicatorColor: AppTheme.primaryGold,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white70,
-                  tabs: [
-                    Tab(text: 'Overview'),
-                    Tab(text: 'Favorites'),
-                    Tab(text: 'Settings'),
-                    Tab(text: 'Activity'),
-                  ],
+                
+                // Profile Content
+                Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      _buildStatCard('Books Reviewed', '12'),
+                      SizedBox(height: 16),
+                      _buildStatCard('Songs Added', '8'),
+                      SizedBox(height: 16),
+                      _buildStatCard('Reports Submitted', '3'),
+                      SizedBox(height: 32),
+                      
+                      _buildProfileOption(
+                        icon: Icons.edit,
+                        title: 'Edit Profile',
+                        onTap: () {
+                          _showComingSoon();
+                        },
+                      ),
+                      _buildProfileOption(
+                        icon: Icons.security,
+                        title: 'Change Password',
+                        onTap: () {
+                          _showComingSoon();
+                        },
+                      ),
+                      _buildProfileOption(
+                        icon: Icons.notifications,
+                        title: 'Notification Settings',
+                        onTap: () {
+                          _showComingSoon();
+                        },
+                      ),
+                      _buildProfileOption(
+                        icon: Icons.privacy_tip,
+                        title: 'Privacy Settings',
+                        onTap: () {
+                          _showComingSoon();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ];
-          },
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              // Overview Tab
-              SingleChildScrollView(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    ProfileStats(user: authProvider.user),
-                    SizedBox(height: 20),
-                    _buildProfileInfo(authProvider.user),
-                  ],
-                ),
-              ),
-              
-              // Favorites Tab
-              ProfileFavorites(
-                favoriteBooks: userProvider.favoriteBooks,
-                favoriteSongs: userProvider.favoriteSongs,
-              ),
-              
-              // Settings Tab
-              ProfileSettings(),
-              
-              // Activity Tab
-              _buildActivityTab(),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileInfo(user) {
+  Widget _buildStatCard(String title, String value) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -118,300 +192,76 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
       child: Padding(
         padding: EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Profile Information',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.darkBlue,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _showEditProfileDialog(),
-                  icon: Icon(
-                    Icons.edit,
-                    color: AppTheme.primaryGold,
-                  ),
-                ),
-              ],
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            SizedBox(height: 16),
-            _buildInfoRow('Email', user?.email ?? 'Not provided'),
-            _buildInfoRow('Member since', _formatDate(user?.createdAt)),
-            _buildInfoRow('Last login', _formatDate(user?.lastLogin)),
-            if (user?.bio != null && user!.bio!.isNotEmpty)
-              _buildInfoRow('Bio', user.bio!),
-            if (user?.location != null && user!.location!.isNotEmpty)
-              _buildInfoRow('Location', user.location!),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryGold,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: AppTheme.darkBlue,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityTab() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Recent Activity',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.darkBlue,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  _buildActivityItem(
-                    icon: Icons.book,
-                    title: 'Reviewed "The Ladder of Divine Ascent"',
-                    time: '2 hours ago',
-                    color: Colors.blue,
-                  ),
-                  _buildActivityItem(
-                    icon: Icons.music_note,
-                    title: 'Added "Agni Parthene" to favorites',
-                    time: '1 day ago',
-                    color: Colors.orange,
-                  ),
-                  _buildActivityItem(
-                    icon: Icons.add_circle,
-                    title: 'Submitted new book for review',
-                    time: '3 days ago',
-                    color: Colors.green,
-                  ),
-                  _buildActivityItem(
-                    icon: Icons.star,
-                    title: 'Rated "Orthodox Prayer Book"',
-                    time: '1 week ago',
-                    color: AppTheme.primaryGold,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityItem({
+  Widget _buildProfileOption({
     required IconData icon,
     required String title,
-    required String time,
-    required Color color,
+    required VoidCallback onTap,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.darkBlue,
-                  ),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  void _showEditProfileDialog() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final nameController  {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final nameController = TextEditingController(text: authProvider.user?.name ?? '');
-    final bioController = TextEditingController(text: authProvider.user?.bio ?? '');
-    final locationController = TextEditingController(text: authProvider.user?.location ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: AppTheme.primaryGold,
         ),
         title: Text(
-          'Edit Profile',
+          title,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.darkBlue,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: bioController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Bio',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: locationController,
-                decoration: InputDecoration(
-                  labelText: 'Location',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.grey,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final profileData = {
-                'name': nameController.text,
-                'bio': bioController.text,
-                'location': locationController.text,
-              };
-              
-              final success = await authProvider.updateProfile(profileData);
-              Navigator.pop(context);
-              
-              if (success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Profile updated successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to update profile'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGold,
-              foregroundColor: AppTheme.darkBlue,
-            ),
-            child: Text('Save'),
-          ),
-        ],
+        onTap: onTap,
       ),
     );
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Never';
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inDays > 365) {
-      return '${(difference.inDays / 365).floor()} year${(difference.inDays / 365).floor() > 1 ? 's' : ''} ago';
-    } else if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} month${(difference.inDays / 30).floor() > 1 ? 's' : ''} ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
-    }
+  void _showComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Feature coming soon!'),
+        backgroundColor: AppTheme.primaryGold,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _animationController.dispose();
     super.dispose();
   }
