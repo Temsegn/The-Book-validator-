@@ -5,18 +5,27 @@ import '../services/api_service.dart';
 class NotificationProvider with ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isLoading = false;
+  String? _errorMessage;
 
   List<AppNotification> get notifications => _notifications;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
+  List<AppNotification> get unreadNotifications => 
+    _notifications.where((n) => !n.isRead).toList();
 
   Future<void> loadNotifications() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      _notifications = await ApiService.getNotifications();
+      final notifications = await ApiService.getNotifications();
+      _notifications = notifications;
+      _errorMessage = null;
     } catch (e) {
+      _errorMessage = 'Failed to load notifications: $e';
       print('Error loading notifications: $e');
     }
 
@@ -24,23 +33,47 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markAsRead(String id) async {
+  Future<bool> markAsRead(String notificationId) async {
     try {
-      await ApiService.markNotificationAsRead(id);
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        _notifications[index] = AppNotification(
-          id: _notifications[index].id,
-          title: _notifications[index].title,
-          message: _notifications[index].message,
-          userId: _notifications[index].userId,
-          isRead: true,
-          createdAt: _notifications[index].createdAt,
-        );
-        notifyListeners();
+      final response = await ApiService.markNotificationAsRead(notificationId);
+      if (response['success'] == true) {
+        final index = _notifications.indexWhere((n) => n.id == notificationId);
+        if (index != -1) {
+          _notifications[index] = _notifications[index].copyWith(isRead: true);
+          notifyListeners();
+        }
+        return true;
       }
+      return false;
     } catch (e) {
       print('Error marking notification as read: $e');
+      return false;
     }
+  }
+
+  Future<void> markAllAsRead() async {
+    final unreadIds = _notifications
+        .where((n) => !n.isRead)
+        .map((n) => n.id)
+        .toList();
+
+    for (final id in unreadIds) {
+      await markAsRead(id);
+    }
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void addNotification(AppNotification notification) {
+    _notifications.insert(0, notification);
+    notifyListeners();
+  }
+
+  void removeNotification(String notificationId) {
+    _notifications.removeWhere((n) => n.id == notificationId);
+    notifyListeners();
   }
 }

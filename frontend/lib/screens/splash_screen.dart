@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/app_theme.dart';
+import 'auth/login_screen.dart';
+import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -10,76 +12,93 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _scaleController;
-  late AnimationController _rotationController;
-  
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _rotationAnimation;
+  late AnimationController _logoController;
+  late AnimationController _textController;
+  late Animation<double> _logoAnimation;
+  late Animation<double> _textAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     
-    _fadeController = AnimationController(
-      duration: Duration(milliseconds: 2000),
-      vsync: this,
-    );
-    
-    _scaleController = AnimationController(
+    _logoController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
     );
     
-    _rotationController = AnimationController(
-      duration: Duration(milliseconds: 3000),
+    _textController = AnimationController(
+      duration: Duration(milliseconds: 1000),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
+    _logoAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
+      parent: _logoController,
       curve: Curves.elasticOut,
     ));
 
-    _rotationAnimation = Tween<double>(
+    _textAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _rotationController,
+      parent: _textController,
       curve: Curves.easeInOut,
     ));
 
-    _startAnimations();
-    _checkAuthStatus();
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0.0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _textController,
+      curve: Curves.easeOutBack,
+    ));
+
+    _initializeApp();
   }
 
-  void _startAnimations() async {
-    await Future.delayed(Duration(milliseconds: 500));
-    _fadeController.forward();
-    _scaleController.forward();
-    _rotationController.forward();
-  }
-
-  void _checkAuthStatus() async {
-    await Future.delayed(Duration(seconds: 3));
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  Future<void> _initializeApp() async {
+    // Start logo animation
+    _logoController.forward();
     
-    if (authProvider.isAuthenticated) {
-      Navigator.pushReplacementNamed(context, '/main');
-    } else {
-      Navigator.pushReplacementNamed(context, '/login');
+    // Wait a bit then start text animation
+    await Future.delayed(Duration(milliseconds: 500));
+    _textController.forward();
+    
+    // Initialize auth provider
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.initialize();
+    
+    // Wait for animations to complete
+    await Future.delayed(Duration(milliseconds: 2000));
+    
+    // Navigate to appropriate screen
+    if (mounted) {
+      if (authProvider.isAuthenticated) {
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => MainScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: Duration(milliseconds: 500),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => LoginScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: Duration(milliseconds: 500),
+          ),
+        );
+      }
     }
   }
 
@@ -94,7 +113,6 @@ class _SplashScreenState extends State<SplashScreen>
             colors: [
               AppTheme.darkBlue,
               AppTheme.lightBlue,
-              AppTheme.primaryGold.withOpacity(0.3),
             ],
           ),
         ),
@@ -102,98 +120,71 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedBuilder(
-                animation: _rotationAnimation,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _rotationAnimation.value * 2 * 3.14159,
-                    child: ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                AppTheme.primaryGold,
-                                AppTheme.darkGold,
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.primaryGold.withOpacity(0.5),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.auto_stories,
-                            size: 60,
-                            color: AppTheme.darkBlue,
-                          ),
-                        ),
+              // Logo Animation
+              ScaleTransition(
+                scale: _logoAnimation,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGold,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
                       ),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(height: 40),
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: Column(
-                  children: [
-                    Text(
-                      'Orthodox Catalog',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontFamily: 'Serif',
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.3),
-                            offset: Offset(2, 2),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Books & Songs Collection',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white.withOpacity(0.9),
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Faith • Knowledge • Community',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.primaryGold,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.auto_stories,
+                    size: 60,
+                    color: AppTheme.darkBlue,
+                  ),
                 ),
               ),
-              SizedBox(height: 60),
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGold),
-                    strokeWidth: 3,
+              
+              SizedBox(height: 40),
+              
+              // Text Animation
+              SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(
+                  opacity: _textAnimation,
+                  child: Column(
+                    children: [
+                      Text(
+                        'Orthodox Catalog',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Discover Sacred Wisdom',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+              ),
+              
+              SizedBox(height: 60),
+              
+              // Loading Indicator
+              FadeTransition(
+                opacity: _textAnimation,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGold),
+                  strokeWidth: 3,
                 ),
               ),
             ],
@@ -205,9 +196,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _fadeController.dispose();
-    _scaleController.dispose();
-    _rotationController.dispose();
+    _logoController.dispose();
+    _textController.dispose();
     super.dispose();
   }
 }

@@ -1,5 +1,5 @@
 name: orthodox_catalog
-description: A professional Flutter app for Orthodox books and songs catalog
+description: A comprehensive Orthodox catalog application for books and songs.
 
 publish_to: 'none'
 
@@ -7,61 +7,85 @@ version: 1.0.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   
-  # State management
+  # State Management
   provider: ^6.1.1
   
-  # HTTP requests
-  http: ^1.1.2
+  # HTTP Client
+  http: ^1.1.0
   
-  # Image handling
-  image_picker: ^1.0.7
-  cached_network_image: ^3.3.1
-  
-  # UI components
+  # UI Components
   cupertino_icons: ^1.0.6
   
-  # File handling
-  path_provider: ^2.1.2
-  
-  # Permissions
-  permission_handler: ^11.3.0
-  
   # Animations
-  flutter_staggered_animations: ^1.1.1
+  animations: ^2.0.8
   
-  # Icons
-  flutter_launcher_icons: ^0.13.1
+  # Audio Player
+  audioplayers: ^5.2.1
+  
+  # File Picker
+  file_picker: ^6.1.1
+  
+  # Image Picker
+  image_picker: ^1.0.4
+  
+  # Cached Network Image
+  cached_network_image: ^3.3.0
+  
+  # URL Launcher
+  url_launcher: ^6.2.1
+  
+  # Share Plus
+  share_plus: ^7.2.1
+  
+  # Path Provider
+  path_provider: ^2.1.1
+  
+  # Shared Preferences
+  shared_preferences: ^2.2.2
+  
+  # Flutter Rating Bar
+  flutter_rating_bar: ^4.0.1
+  
+  # Shimmer
+  shimmer: ^3.0.0
+  
+  # Pull to Refresh
+  pull_to_refresh: ^2.0.0
+  
+  # Connectivity Plus
+  connectivity_plus: ^5.0.2
+  
+  # Device Info Plus
+  device_info_plus: ^9.1.1
+  
+  # Package Info Plus
+  package_info_plus: ^4.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
   
-  # Custom fonts for Orthodox styling
-   
-flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "assets/icon/icon.png"
-  min_sdk_android: 21
-  web:
-    generate: true
-    image_path: "assets/icon/icon.png"
-    background_color: "#1B365D"
-    theme_color: "#D4AF37"
-  windows:
-    generate: true
-    image_path: "assets/icon/icon.png"
-    icon_size: 48
-  macos:
-    generate: true
-    image_path: "assets/icon/icon.png"
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/audio/
+  
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
