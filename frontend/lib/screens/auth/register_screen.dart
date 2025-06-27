@@ -180,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       
       if (success) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/main');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Registration failed. Please try again.')),

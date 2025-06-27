@@ -8,7 +8,7 @@ import '../models/report.dart';
 import '../models/notification.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://orthodox-t1mw.onrender.com/api';
   static String? _token;
 
   static void setToken(String token) {
